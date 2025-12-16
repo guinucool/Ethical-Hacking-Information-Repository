@@ -293,6 +293,7 @@ hashcat -a 3 ?d?d?d?d --stdout
 
 # Attack command
 hashcat -a 3 -m {HASH MODE} {HASH} ?d?d?d?d
+-a 7 -> wordlist + mask
 
 # Show if positive result
 hashcat -a {ATTACK MODE} -m {HASH MODE} {HASH} {WORDLIST IF APPLIABLE} --show
@@ -373,17 +374,32 @@ python3 hash-id.py
 Hydra for online attacks
 ```
 # FTP Attack
-hydra -l <username> -P <wordlist> {URL TO SERVICE}
+hydra {HOST} -l <username> -P <wordlist>
 
 # SMTP
-hydra -l <email address> -P <wordlist> {URL TO SERVICE}
+hydra {HOST} -l <email address> -P <wordlist>
 
 # SSH
-hydra -L <userlist> -P <wordlist> {URL TO SERVICE}
+hydra {HOST} -L <userlist> -P <wordlist>
 
 # HTTP LOGIN
-hydra -l <username> -P <wordlisr> {URL} http-get-form "/login-get/index.php:username=^USER^&password=^PASS^:S=logout.php" -f 
+hydra {HOST} {REQUEST-TYPE} -l {USER} -P {WORDLIST} "{content}"
 
+{REQUEST-TYPE} - http_get_form or http_post_form
+{content} - path:parameters:condition
+
+examples
+path: /login-get/index.php
+parameters: username=^USER^&password=^PASS^
+condition: S:logout.php -> Success condition
+           F: Invalid Login! -> Fail condition
+
+-L -> several users
+-l -> one user
+-p -> one password
+-P -> several passwords
 -f -> stop bruteforce after finding correct
 -v -> Verbose
 ```
+
+Password spraying
