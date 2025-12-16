@@ -236,6 +236,70 @@ username: admin
 password: admin
 ```
 
+Customized Wordlist
+Cewl
+```
+# Get words from a website crawling
+cewl -w {DESTINATION PATH} -d {DEPTH OF SEARCH} -m {MINIMUM WORD LENGTHS} {WEBSITE TO CRAWL}
+```
+
+Crunch
+```
+# Generate a wordlist based on all possible character combinations
+crunch <min> <max> <char list> -o <destination>
+
+# <char list> example
+abdc232
+214snfs
+2rmfdsn
+
+-t option
+
+@ - all lowercase chars
+, - all uppercase chars
+% - all numeric
+^ - special chars
+
+examples: pass%%, name@,%...
+```
+
+Generate wordlist based on user information
+```
+git clone https://github.com/Mebus/cupp.git
+
+# Run
+python3 cupp.py -i
+
+# Help
+python3 cupp.py -h
+```
+
+Generate usernames based on user information
+```
+git clone https://github.com/therodri2/username_generator.git
+
+# Get all the options for username_generator
+python3 username_generator.py -h
+```
+
+Hashcat
+```
+# Default dictionary attack command
+hashcat -a 0 -m {HASH MODE} {HASH} {WORDLIST IF APPLIABLE}
+
+# Brute-force attack command
+# List possibilities
+hashcat -a 3 ?d?d?d?d --stdout
+
+# Attack command
+hashcat -a 3 -m {HASH MODE} {HASH} ?d?d?d?d
+
+# Show if positive result
+hashcat -a {ATTACK MODE} -m {HASH MODE} {HASH} {WORDLIST IF APPLIABLE} --show
+
+# Get information on hash types etc...
+hashcat -h
+```
 
 John the Ripper
 ```
@@ -251,6 +315,9 @@ john --format={HASH FORMAT} --wordlist={WORD} {HASH}
 # List all available formats
 john --list=formats
 
+# Brute-force attack command
+john --mask={THE MASK} --format={FORMAT} {HASH}
+
 # Show (if) cracked password
 john --format={FORMAT} --show {HASH}
 
@@ -262,6 +329,9 @@ john --single --rule={RULE NAME} --format={FORMAT} {HASH WITH USER INFO}
 
 # Calling a custom rule in normal mode (applies to the words in the list)
 john --wordlist={WORDLIST} --rule={RULE NAME} --format={FORMAT} {HASH}
+
+# Print all the brute force words
+--stdout
 ```
 
 ```
@@ -271,7 +341,11 @@ john --wordlist={WORDLIST} --rule={RULE NAME} --format={FORMAT} {HASH}
 
 ```
 # Defining John Rules for password guessing
+Az - a single word coming from wordlist, etc...
+"..." - Add at the end of word
+^... - Add at beggining
 
+Use regex notation
 ```
 
 ```
@@ -294,4 +368,22 @@ wget https://gitlab.com/kalilinux/packages/hash-identifier/-/raw/kali/master/has
 
 # Run hash id
 python3 hash-id.py
+```
+
+Hydra for online attacks
+```
+# FTP Attack
+hydra -l <username> -P <wordlist> {URL TO SERVICE}
+
+# SMTP
+hydra -l <email address> -P <wordlist> {URL TO SERVICE}
+
+# SSH
+hydra -L <userlist> -P <wordlist> {URL TO SERVICE}
+
+# HTTP LOGIN
+hydra -l <username> -P <wordlisr> {URL} http-get-form "/login-get/index.php:username=^USER^&password=^PASS^:S=logout.php" -f 
+
+-f -> stop bruteforce after finding correct
+-v -> Verbose
 ```
