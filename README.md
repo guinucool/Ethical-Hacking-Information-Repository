@@ -379,43 +379,62 @@ nmap -sI 192.168.1.20 192.168.1.10
 
 ### Vulnerability Analysis
 
-After assessing possible entrypoints and all the information we could on the scanning phase, it is now important to access possible vulnerabilites that might be exploited from the discovered attack surface.
+After identifying potential entry points and collecting technical information during the scanning phase, the next step is to analyze possible vulnerabilities that may be exploited within the discovered attack surface. Vulnerability analysis focuses on identifying known weaknesses in systems, services, and applications in order to assess risk and guide further exploitation or mitigation efforts.
 
-#### Standard Framework
+#### Standard Frameworks
 
-In cybersecurity there is a common framework that lists all know vulnerabilities and weakness. This framework is amazing to help find out more information about entrypoints and exploits that can be used against systems knowing information about said systems.
+In cybersecurity, standardized frameworks exist to catalog and describe known vulnerabilities and weaknesses. These frameworks provide a common language and reference model for identifying, classifying, and researching security issues based on observed system characteristics.
 
-- [Common Weakness Enumeration](https://cwe.mitre.org/)
-- [Common Vulnerabilities and Exposures](https://www.cve.org/)
+The most widely used frameworks include:
+
+- **Common Weakness Enumeration (CWE)**  
+  CWE is a comprehensive list of software and hardware weakness types. It focuses on underlying design and implementation flaws that may lead to vulnerabilities and is useful for understanding root causes and attack patterns.  
+  Reference: https://cwe.mitre.org/
+
+- **Common Vulnerabilities and Exposures (CVE)**  
+  CVE is a publicly available catalog of specific, real-world vulnerabilities. Each CVE entry describes a known vulnerability in a product or system and is commonly referenced by security tools, advisories, and patches.  
+  Reference: https://www.cve.org/
+
+These frameworks enable security professionals to map discovered services and software versions to known weaknesses and documented exploits.
 
 #### Nessus
 
-A tool with a GUI that allows to scan hosts and obtain several information about vulnerabilities in them.
+Nessus is a widely used vulnerability assessment tool that provides a graphical user interface for scanning hosts and identifying known vulnerabilities. It performs automated checks against systems and services and correlates findings with CVE and CWE databases to produce detailed vulnerability reports.
 
-https://www.tenable.com/products/nessus/nessus-essentials
+Nessus Essentials is a free version suitable for learning and small-scale assessments.
 
-```
-https:\\localhost:8043
-```
+Reference: https://www.tenable.com/products/nessus/nessus-essentials
+
+Once installed and running, the Nessus web interface can typically be accessed locally at:
+
+https://localhost:8043
+
+Through the interface, scan policies can be configured, targets defined, and results reviewed in a structured and prioritized manner.
 
 #### OpenVAS
 
-Automated scans on system that link findings with vulnerabilites
+OpenVAS (Open Vulnerability Assessment System) is an open-source vulnerability scanning framework that performs automated security assessments. It identifies vulnerabilities by scanning target systems and correlating findings with known vulnerability databases.
 
-```
-# Install the docker image to run OpenVAS
+One common method to deploy OpenVAS is through a Docker container, which simplifies setup and configuration.
+
+```bash
+# Install Docker
 sudo apt install docker.io
 
-# Run the docker image with OpenVAS
+# Pull and run the OpenVAS Docker container
 sudo docker run -d -p 443:443 --name openvas mikesplain/openvas
 ```
 
-```
-# Access to the OpenVAS GUI
-https:\\127.0.0.1
-username: admin
-password: admin
-```
+After the container is running, the OpenVAS web interface can be accessed via a web browser:
+
+https://127.0.0.1
+
+Default credentials (for initial access):
+
+- Username: `admin`
+- Password: `admin`  
+
+Once authenticated, scan tasks can be created to assess target hosts, and findings are automatically linked to known vulnerabilities for further analysis and remediation planning.
 
 ### Enumeration
 
