@@ -521,6 +521,12 @@ find / -writable 2>/dev/null | cut -d "/" -f 2,3 | grep -v proc | sort -u
 # See NFS configuration
 cat /etc/exports
 showmount -e {VICTIM_ADDRESS}
+
+# See permitted sudo commands for user
+sudo -l
+
+# History of commands on user
+cat /home/{user}/.bash_history
 ```
 
 List of useful third-party tools:
