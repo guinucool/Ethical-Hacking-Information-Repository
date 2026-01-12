@@ -1587,6 +1587,20 @@ This limitation introduces the need for privilege escalation. The objective of t
 
 Successful privilege escalation enables broader control over the system, allowing for deeper interaction, increased abuse potential, and more extensive exploration of system resources and configurations.
 
+The initial step in the privilege escalation process involves identifying potential weaknesses within the system that may enable elevation of privileges. This is primarily achieved through systematic analysis and information gathering, commonly referred to as:
+- [Enumeration](#enumeration-1)
+
+Following the enumeration phase, the system can be targeted through a variety of attack vectors, depending on its configuration and exposed components:
+
+<ins>Linux</ins>
+- [Kernel Exploits](#kernel-exploits)
+- [Sudo Exploits](#sudo-exploits)
+- [SUID Exploits](#suid-exploits)
+- [Capabilities Exploits](#capabilities-exploits)
+- [Cron Jobs Exploits](#cron-jobs-exploits)
+- [PATH Exploits](#path-exploits)
+- [NFS Exploits](#nfs-exploits)
+
 #### Enumeration
 
 Enumeration is the systematic process of collecting detailed information about a target system using the level of access currently available. The objective is to understand the system’s configuration, operating environment, users, processes, services, network settings, and security controls in order to identify potential weaknesses or escalation paths. Unlike initial discovery, enumeration focuses on extracting maximum insight from existing access rather than attempting new intrusions.
