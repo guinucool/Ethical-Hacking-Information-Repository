@@ -438,55 +438,115 @@ Once authenticated, scan tasks can be created to assess target hosts, and findin
 
 ### Enumeration
 
-Lastly, once we know more or less the system structure and potential attack vectors and surface, we want to find as much information as possible about said systems.
+Enumeration is the phase that follows scanning and vulnerability analysis. At this stage, the objective is to collect as much detailed and precise information as possible about the target systems based on the previously identified structure and attack surface.
 
-This includes services ran and their versions. Operating systems versions of found machines. Protocols used. Basically all information about their workings.
+This process includes identifying running services and their versions, operating system details, supported protocols, user accounts, network shares, and service-specific configurations. Enumeration refines earlier findings and helps accurately confirm real and exploitable vulnerabilities, reducing false assumptions and improving attack precision.
 
-This can also help us better identify and specify the real possible vulnerabilities.
+- `telnet`: is a network protocol that establishes a raw TCP connection to a specified host and port, allowing direct interaction with the service. Upon connection, normally, most services will output a banner with information on the running services.
 
-### Telnet
+```bash
+# Connect to a remote service using Telnet
+telnet 192.168.1.10 80
 
-Communications in clear text
-Can communicate with whatever service uses TCP and no encryption
-Could be used to prone an HTTP server for example with
-`GET / HTTP/ 1.1` so we get information about it. (For example, server version)
+# Manually send an HTTP request to retrieve server headers
+GET / HTTP/1.1
+Host: example.com
 
+# Useful commonly used ports
+25 -> SMTP
+21 -> FTP
+110 -> POP3
+143 -> IMAP
+22 -> SSH
+443 -> HTTPS
+53 -> DNS
+80 -> HTTP
 ```
-# Connect to a service that doesn't use encryption
-telnet MACHINE_IP PORT
-```
 
-### Netcat
+- `nc`: Netcat provides low-level access to network connections and is widely used for enumeration and testing service behavior. It is capable of acting as both a client and a server using TCP or UDP.
 
-Can act as a server or a client either in TCP or UDP
+```bash
+# Connect to a remote TCP service
+nc 192.168.1.10 80
 
-ports less than 1024 require root privilege
-
-```
-# Connect to a server that doesn't use encryption
-nc MACHINE_IP PORT
-
-# Act as a listening server on a specific port 1234
+# Start a TCP listener on port 1234
 nc -l -p 1234
 
-# Make the output verbose or very verbose
-nc -v
-nc -vv
-
-# Act as a listening server on a specific port 1234 that keeps listening after client disconnects
+# Start a persistent listener that remains active after disconnects
 nc -l -p 1234 -k
 
-# Don't allow address resolution, only numerice IPs
-nc -n
+# Enable verbose output
+nc -v 192.168.1.10 21
+
+# Enable very verbose output
+nc -vv 192.168.1.10 21
+
+# Disable DNS resolution and use numeric IP addresses only
+nc -n 192.168.1.10 22
 ```
 
-nbtscan
-enum4linux
-dig
-name_snoop
-smtp_user_enum
-snmp-check
-nmap snmp
+- `nbtscan`: is a NetBIOS enumeration tool used in Windows-based networks. It queries NetBIOS Name Service (NBNS) to retrieve information about hosts, including computer names, IP addresses, workgroups or domains, and logged-in users. It is particularly useful when SMB-related ports are exposed.
+
+```bash
+# Scan a subnet for NetBIOS information
+nbtscan 192.168.1.0/24
+
+# Perform a verbose scan
+nbtscan -v 192.168.1.0/24
+```
+
+- `enum4linux`: is an automated enumeration tool for Windows and Samba systems. It leverages SMB and RPC services to gather detailed information such as user accounts, groups, shared resources, password policies, and domain information.
+
+```bash
+# Perform basic SMB enumeration
+enum4linux 192.168.1.20
+
+# Perform full enumeration
+enum4linux -a 192.168.1.20
+
+# Enumerate users only
+enum4linux -U 192.168.1.20
+
+# Enumerate shares
+enum4linux -S 192.168.1.20
+```
+
+- `name_snoop`: is a DNS enumeration tool designed to discover valid hostnames by analyzing DNS responses. It can reveal internal naming patterns and additional subdomains.
+
+```bash
+# Enumerate hostnames for a domain
+name_snoop example.com
+```
+
+- `smtp_user_enum`: is used to identify valid email users on SMTP servers by issuing mail-related commands and observing server responses.
+
+```bash
+# Enumerate users using the VRFY command
+smtp-user-enum -M VRFY -U users.txt -t 192.168.1.30
+
+# Enumerate users using the RCPT command
+smtp-user-enum -M RCPT -U users.txt -t 192.168.1.30
+```
+
+- `snmp-check`: is an SNMP enumeration tool that extracts detailed information from SNMP-enabled devices when a valid community string is known or guessed.
+
+```bash
+# Enumerate SNMP information using the default community string
+snmp-check 192.168.1.40
+
+# Specify a community string
+snmp-check -c public 192.168.1.40
+```
+
+- `nmap`: includes NSE scripts specifically designed for SNMP enumeration, allowing structured data extraction from network devices.
+
+```bash
+# Enumerate SNMP system information
+nmap -sU -p 161 --script=snmp-info 192.168.1.40
+
+# Enumerate SNMP interfaces and routing information
+nmap -sU -p 161 --script=snmp-interfaces,snmp-netstat 192.168.1.40
+```
 
 ## Exploitation
 
