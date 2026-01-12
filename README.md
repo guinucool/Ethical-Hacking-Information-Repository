@@ -562,173 +562,291 @@ There are several exploit disciplines such as:
 - [Web Exploitation](#web-exploitation)
 - [Privilege Escalation](#privilege-escalation)
 
-Customized Wordlist
-Cewl
-```
-# Get words from a website crawling
-cewl -w {DESTINATION PATH} -d {DEPTH OF SEARCH} -m {MINIMUM WORD LENGTHS} {WEBSITE TO CRAWL}
-```
+### Password Attacks
 
-Crunch
-```
-# Generate a wordlist based on all possible character combinations
-crunch <min> <max> <char list> -o <destination>
+#### Wordlists
 
-# <char list> example
-abdc232
-214snfs
-2rmfdsn
+- `cewl`: is a custom wordlist generator that crawls a website and extracts unique words from its content. It is commonly used in security assessments and password auditing to create targeted wordlists based on a specific domain.
 
--t option
+```bash
+# Crawl a website and save all discovered words
+cewl -w wordlist.txt https://example.com
 
-@ - all lowercase chars
-, - all uppercase chars
-% - all numeric
-^ - special chars
+# Crawl up to 3 levels deep and extract words with at least 5 characters
+cewl -w example_words.txt -d 3 -m 5 https://example.com
 
-examples: pass%%, name@,%...
+# Crawl a specific section of a site with deeper recursion
+cewl -w blog_words.txt -d 4 -m 6 https://example.com/blog
+
+# Use a custom User-Agent and allow crawling sites with SSL issues
+cewl -w secure_words.txt -d 2 -m 4 --user-agent "Mozilla/5.0" --ssl https://secure.example.com
+
+# Include words containing numbers (useful for usernames or password patterns)
+cewl -w mixed_words.txt -d 3 -m 5 --with-numbers https://portal.example.com
 ```
 
-Generate wordlist based on user information
+- `crunch`: is a wordlist generator that creates lists based on all possible combinations of characters. It is commonly used for password cracking, brute-force attacks, and security research where controlled and predictable wordlists are required.
+
+```bash
+# Generate a wordlist using all possible character combinations
+# Syntax: crunch <min_length> <max_length> <character_set> -o <output_file>
+crunch 4 6 abc123 -o wordlist.txt
+
+# Generate numeric-only passwords between 6 and 8 characters
+crunch 6 8 0123456789 -o pin_codes.txt
+
+# Generate lowercase alphabetic passwords of fixed length
+crunch 8 8 abcdefghijklmnopqrstuvwxyz -o lowercase_8.txt
+
+# Generate a wordlist using a custom character set
+crunch 5 7 abdc232214snfs2rmfdsn -o custom_chars.txt
+
+# Use the -t option to define a structured password pattern
+# @ = lowercase letters, , = uppercase letters, % = numbers, ^ = special characters
+
+# Example: "pass" followed by two numbers (pass00 → pass99)
+crunch 6 6 -t pass%% -o pass_numbers.txt
+
+# Example: name + lowercase letter + number (namea0 → namez9)
+crunch 6 6 -t name@% -o name_variations.txt
+
+# Example: Uppercase letter + 3 numbers + special character
+crunch 5 5 -t ,%%%^^ -o complex_patterns.txt
 ```
+
+- `cupp`: is a user-profiling wordlist generator that creates targeted password lists based on personal information such as names, nicknames, birthdays, relationships, and common patterns. It is widely used in social-engineering–focused security assessments.
+
+```bash
+# Get the generator from the git repository
 git clone https://github.com/Mebus/cupp.git
+```
 
-# Run
+```bash
+# Run CUPP in interactive mode (prompts for user information)
 python3 cupp.py -i
 
-# Help
+# Example interactive inputs (used internally by CUPP):
+# Name: john
+# Surname: doe
+# Nickname: jd
+# Birthdate: 01011995
+# Partner name: jane
+# Pet name: max
+# Company: acme
+
+# Show help and available options
 python3 cupp.py -h
+
+# Generate a wordlist using a predefined profile (no interaction)
+python3 cupp.py -w profiles/john.txt
+
+# Improve wordlist with leetspeak, special characters, and numbers
+python3 cupp.py -i --leet --specialchars
 ```
 
-Generate usernames based on user information
-```
+- `username_generator`: is a username generation tool that creates possible username variations based on personal information such as names, nicknames, dates, and common patterns. It is useful for reconnaissance, account enumeration, and security assessments.
+
+```bash
+# Get the generator from the git repository
 git clone https://github.com/therodri2/username_generator.git
+```
 
-# Get all the options for username_generator
+```bash
+# Display all available options
 python3 username_generator.py -h
+
+# Generate usernames using a first and last name
+python3 username_generator.py -f John -l Doe
+
+# Generate usernames with a nickname and common separators
+python3 username_generator.py -n johnd -s "_."
+
+# Include numbers such as birth year or common suffixes
+python3 username_generator.py -f John -l Doe -y 1995 -r 0 99
+
+# Generate lowercase-only usernames and save to a file
+python3 username_generator.py -f John -l Doe --lower -o usernames.txt
+
+# Generate usernames combining name, nickname, and custom domain-style format
+python3 username_generator.py -f John -l Doe -n johnny -d example
 ```
 
-Hashcat
-```
-# Default dictionary attack command
-hashcat -a 0 -m {HASH MODE} {HASH} {WORDLIST IF APPLIABLE}
+#### Online Attacks
 
-# Brute-force attack command
-# List possibilities
+- `hydra`: is a fast, parallelized login brute-force tool that supports numerous network services and protocols such as FTP, SSH, SMTP, HTTP, and more. It is commonly used for credential auditing and penetration testing.
+
+```bash
+# FTP brute-force attack using a single username and a password list
+hydra ftp.example.com -l admin -P rockyou.txt ftp
+
+# SMTP brute-force attack using an email address
+hydra mail.example.com -l user@example.com -P passwords.txt smtp
+
+# SSH brute-force attack using multiple usernames and a password list
+hydra ssh.example.com -L users.txt -P passwords.txt ssh
+
+# HTTP POST login brute-force attack
+# Format: hydra <host> <request-type> -l/-L <user(s)> -p/-P <password(s)> "<path:parameters:condition>"
+hydra www.example.com http-post-form \
+"/login.php:username=^USER^&password=^PASS^:F=Invalid login" \
+-l admin -P passwords.txt
+
+# HTTP GET login brute-force attack with success condition
+hydra www.example.com http-get-form \
+"/login-get/index.php:username=^USER^&password=^PASS^:S=logout.php" \
+-l admin -P passwords.txt
+
+# Stop attack after first valid credential is found and enable verbose output
+hydra ssh.example.com -L users.txt -P passwords.txt ssh -f -v
+```
+
+#### Offline Attacks
+
+- `hash-id`: is a hash identification tool used to determine the possible algorithm(s) used to generate a given hash. It helps narrow down the correct cracking approach by suggesting compatible hash types for tools like John the Ripper and Hashcat.
+
+```bash
+# Download the hash-id script
+wget https://gitlab.com/kalilinux/packages/hash-identifier/-/raw/kali/master/hash-id.py
+```
+
+```bash
+# Run hash-id in interactive mode
+python3 hash-id.py
+
+# Example usage (interactive):
+# Enter hash: 5f4dcc3b5aa765d61d8327deb882cf99
+# Possible hash types:
+#  - MD5
+#  - MD4
+#  - NTLM
+
+# Identify a hash non-interactively using stdin
+echo "098f6bcd4621d373cade4e832627b4f6" | python3 hash-id.py
+```
+
+- `hashcat`: is a high-performance password recovery tool that supports multiple attack modes such as dictionary, brute-force, mask, and hybrid attacks. It is widely used for password auditing, digital forensics, and security testing across many hash algorithms.
+
+```bash
+# Basic dictionary attack
+# -a 0 = straight (dictionary) attack
+# -m 0 = MD5 hash mode
+hashcat -a 0 -m 0 hashes.txt rockyou.txt
+
+# Brute-force (mask) attack – list all possible 4-digit numeric combinations
+# --stdout outputs candidates without cracking
 hashcat -a 3 ?d?d?d?d --stdout
 
-# Attack command
-hashcat -a 3 -m {HASH MODE} {HASH} ?d?d?d?d
--a 7 -> wordlist + mask
+# Brute-force attack against a hash using a 4-digit numeric mask
+# -a 3 = mask attack
+# -m 1000 = NTLM hash mode
+hashcat -a 3 -m 1000 hashes.txt ?d?d?d?d
 
-# Show if positive result
-hashcat -a {ATTACK MODE} -m {HASH MODE} {HASH} {WORDLIST IF APPLIABLE} --show
+# Hybrid attack: wordlist + mask
+# -a 7 = append mask to each word in the wordlist
+# Example: password + 2 digits (password00 → password99)
+hashcat -a 7 -m 0 hashes.txt rockyou.txt ?d?d
 
-# Get information on hash types etc...
+# Show cracked hashes (successful results only)
+hashcat -a 0 -m 0 hashes.txt rockyou.txt --show
+
+# Display help, supported hash modes, and attack options
 hashcat -h
 ```
 
-John the Ripper
-```
-# Default command execution
-john <options> {HASH FILE PATH}
+- `john` (John the Ripper): is a password cracking and auditing tool that supports dictionary, brute-force, mask, hybrid, and rule-based attacks. It is commonly used in penetration testing, forensics, and system security audits across many hash formats.
 
-# Specify wordlist
-john --wordlist={PATH TO WORD LIST} {HASH}
+```bash
+# Basic execution using default attack modes
+john hashes.txt
 
-# Specify format
-john --format={HASH FORMAT} --wordlist={WORD} {HASH}
+# Dictionary attack with a specific wordlist
+john --wordlist=rockyou.txt hashes.txt
 
-# List all available formats
+# Dictionary attack specifying the hash format
+# Example: raw-md5
+john --format=raw-md5 --wordlist=rockyou.txt hashes.txt
+
+# List all supported hash formats
 john --list=formats
 
-# Brute-force attack command
-john --mask={THE MASK} --format={FORMAT} {HASH}
+# Brute-force / mask attack
+# Example: 4-digit numeric passwords
+john --mask=?d?d?d?d --format=NT hashes.txt
 
-# Show (if) cracked password
-john --format={FORMAT} --show {HASH}
+# Show cracked passwords (if any)
+john --format=raw-md5 --show hashes.txt
 
-# Single crack mode (base yourself on user information)
-john --single --format={FORMAT} {HASH WITH USER INFO}
+# Single crack mode (uses username and related info)
+john --single --format=raw-md5 hashes_with_users.txt
 
-# Calling a custom rule in single crack mode
-john --single --rule={RULE NAME} --format={FORMAT} {HASH WITH USER INFO}
+# Single crack mode with a custom rule
+john --single --rule=Jumbo --format=raw-md5 hashes_with_users.txt
 
-# Calling a custom rule in normal mode (applies to the words in the list)
-john --wordlist={WORDLIST} --rule={RULE NAME} --format={FORMAT} {HASH}
+# Dictionary attack with a custom rule applied to each word
+john --wordlist=rockyou.txt --rule=Best64 --format=raw-md5 hashes.txt
 
-# Print all the brute force words
---stdout
+# Print all generated candidates instead of cracking
+john --mask=?l?l?l?l --stdout
 ```
 
-```
-# HASH WITH USER INFO (COULD BE THE UNSHADOW FILE)
-{username}:{hash}
-```
+```bash
+# Configuration of custom rules in /etc/john/john.conf
 
-```
-# Defining John Rules for password guessing
-Az - a single word coming from wordlist, etc...
-"..." - Add at the end of word
-^... - Add at beggining
+# Custom John rules for targeted password mutations
+[List.Rules:TargetedRules]
 
-Use regex notation
-```
+# Base word
+Az
 
-```
-# Unshadow suite
-unshadow {PATH TO PASSWD} {PATH TO SHADOW} > {UNSHADOW PATH}
+# Append common numbers
+Az"1"
+Az"123"
+Az"2024"
 
-# Zip suite
-zip2john {ZIP FILE} > {HASH DESTINATION FILE}
+# Prepend common prefixes
+^Admin Az
+^! Az
 
-# Rar suite
-rar2john {RAR FILE} > {HASH DESTINATION FILE}
+# Capitalize first letter and append number
+c Az"1"
 
-# SSH suite
-ssh2john {PRIVATE KEY FILE} > {HASH DESTINATION FILE}
-```
+# Replace letters (leet-style)
+s a @
+s e 3
+s i 1
+s o 0
 
-```
-# Get hash id
-wget https://gitlab.com/kalilinux/packages/hash-identifier/-/raw/kali/master/hash-id.py
-
-# Run hash id
-python3 hash-id.py
-```
-
-Hydra for online attacks
-```
-# FTP Attack
-hydra {HOST} -l <username> -P <wordlist>
-
-# SMTP
-hydra {HOST} -l <email address> -P <wordlist>
-
-# SSH
-hydra {HOST} -L <userlist> -P <wordlist>
-
-# HTTP LOGIN
-hydra {HOST} {REQUEST-TYPE} -l {USER} -P {WORDLIST} "{content}"
-
-{REQUEST-TYPE} - http_get_form or http_post_form
-{content} - path:parameters:condition
-
-examples
-path: /login-get/index.php
-parameters: username=^USER^&password=^PASS^
-condition: S:logout.php -> Success condition
-           F: Invalid Login! -> Fail condition
-
--L -> several users
--l -> one user
--p -> one password
--P -> several passwords
--f -> stop bruteforce after finding correct
--v -> Verbose
+# Rule syntax basics
+Az        → base word from wordlist
+"123"     → append characters to the end
+^Admin    → prepend characters to the beginning
+c         → capitalize first letter
+u         → uppercase all letters
+l         → lowercase all letters
+r         → reverse the word
+s x y     → substitute character x with y
 ```
 
-Password spraying
+```bash
+# Combine passwd and shadow files (Linux systems)
+unshadow /etc/passwd /etc/shadow > unshadowed_hashes.txt
+
+# Extract hashes from protected files
+
+# ZIP archive
+zip2john secret.zip > zip_hash.txt
+
+# RAR archive
+rar2john secret.rar > rar_hash.txt
+
+# SSH private key
+ssh2john id_rsa > ssh_hash.txt
+```
+
+```bash
+# Hash file with user information (e.g., unshadow output)
+username:$6$somesalt$hashedpassword
+```
 
 Antivirus
 
